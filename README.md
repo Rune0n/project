@@ -9,7 +9,7 @@
   - [NHANES Mortality Dataset](https://ftp.cdc.gov/pub/HEALTH_STATISTICS/NCHS/datalinkage/linked_mortality/)
     - `NHANES_1999_2000_MORT_2019_PUBLIC.dat`
     
-## 3. Data
+## Data
 
 - **Data Acquisition and Preparation**
   * Survey Data
@@ -26,7 +26,7 @@
    cat https://ftp.cdc.gov/pub/HEALTH_STATISTICS/NCHS/datalinkage/linked_mortality/Stata_ReadInProgramAllSurveys.do
    ```
 
-## 3. Code Development
+## Code Development
 - **Edit and Rename Provided Script**
   * Download `Stata_ReadInProgramAllSurveys.do`, edit it and rename it to `followup.do`. Commit the changes with the description “Updated DEMO.XPT linkage .do file".
 
@@ -42,7 +42,7 @@
     lookfor follow
     ```
 
-## 3. Key Parameters for Analysis
+## Key Parameters for Analysis
 
 - **Import the self-report health assessment data**
   * Import the specific health questionnaire data and prepare it for analysis in Week 7:
@@ -69,7 +69,8 @@
     sts graph, by(huq010) fail
     stcox i.huq010
     ```
-## 4. Inferences
+
+## Inferences
 
 Please review [documentation](https://wwwn.cdc.gov/Nchs/Nhanes/1999-2000/HUQ.htm#HUQ010) for the file `HUQ.XPT`, which includes the variable `huq010`.
   * Variable of interests is huq10, which is general health condition with the following categories:
