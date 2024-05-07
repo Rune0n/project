@@ -1,9 +1,9 @@
 # Stata II (Intermediate) Week 6-8 Project 
 
-### 1. Research Aim
+### Research Aim
  To determine the association between self-reported health and mortality.
   
-### 2. Data Sources
+### Data Sources
   [National Health and Nutrition Examination Survey](https://www.cdc.gov/nchs/nhanes/index.htm)
   - [NHANES Survey Dataset](https://wwwn.cdc.gov/Nchs/Nhanes/1999-2000/DEMO.XPT)
   - [NHANES Mortality Dataset](https://ftp.cdc.gov/pub/HEALTH_STATISTICS/NCHS/datalinkage/linked_mortality/)
