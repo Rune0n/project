@@ -96,4 +96,6 @@ Please review [documentation](https://wwwn.cdc.gov/Nchs/Nhanes/1999-2000/HUQ.htm
     codebook huq010
     ```
 
-* Further updates will be coming in Week 7 and beyond.
+## Week 7 Analyses
+
+Click [here](dyndoc.html) to view nonparametric and semiparametric risk estimates from Stata.
