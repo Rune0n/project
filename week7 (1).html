@@ -1,0 +1,1025 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+</head>
+<h1><a href="#hw7-survival-analysis" id="hw7-survival-analysis">HW7 survival analysis</a></h1>
+<h3><a href="#wenjie-cai" id="wenjie-cai">Wenjie Cai</a></h3>
+<p><strong>non-parametric:</strong></p>
+<pre><code>. // non-parametric
+. cls 
+
+. //1. data
+. global repo &quot;https://raw.githubusercontent.com/WenjieCai825/project/main/&quot;
+
+. global nhanes &quot;https://wwwn.cdc.gov/Nchs/Nhanes/&quot;
+
+. 
+. //2. code
+. do ${repo}followup.do
+
+. /*******************************************************************************
+&gt; * May 2022
+&gt; 
+&gt; **      PUBLIC-USE LINKED MORTALITY FOLLOW-UP THROUGH DECEMBER 31, 2019 **
+&gt; 
+&gt; *       The following Stata code can be used to read the fixed-width format ASCII 
+&gt; *       public-use Linked Mortality Files (LMFs) from a stored location into a 
+&gt; *       Stata dataset.  Basic frequencies are also produced.  
+&gt;  
+&gt;         
+&gt; NOTE:   The format definitions given below will result in procedure output 
+&gt;                 showing values that have been grouped as they are shown in the file layout
+&gt;                 documentation.
+&gt; 
+&gt;                 
+&gt; To download and save the public-use LMFs to your hard drive, follow these steps:
+&gt; 
+&gt; *Step 1: Designate a folder on your hard drive to download the public-use LMF. 
+&gt;                  In this example, the data will be saved to: 'C:\PUBLIC USE DATA'
+&gt; 
+&gt; *Step 2: To download the public-use LMF, go to the web site: 
+&gt;              https://ftp.cdc.gov/pub/health_statistics/nchs/datalinkage/linked_mortality/.
+&gt; 
+&gt;          Right click on the desired survey link and select &quot;Save target as...&quot;.  
+&gt;                  A &quot;Save As&quot; screen will appear where you will need to select and input 
+&gt;                  a location where to save the data file on your hard drive.  
+&gt; 
+&gt;          Also note that the &quot;Save as type:&quot; box should read &quot;DAT File (*.dat)&quot;.  
+&gt;                  This will ensure that the data file is saved to your hard drive in the 
+&gt;                  correct format.  
+&gt; 
+&gt;          In this example, the data file is saved in the folder, &quot;C:\PUBLIC USE DATA&quot;, 
+&gt;                  and the data file is saved as &quot;&lt;SURVEY&gt;_MORT_2019_PUBLIC.DAT&quot;. 
+&gt; */
+. 
+. di &quot;What is your working directory?&quot; _request(workdir)
+What is your working directory?. /Users/wenjiecai/Documents/term4/stata_intermediate/hw7
+
+. cd &quot;$workdir&quot;
+/Users/wenjiecai/Documents/term4/stata_intermediate/hw7
+
+. global SURVEY NHANES_1999_2000     // REPLACE &lt;SURVEY&gt; WITH RELEVANT SURVEY NAME (IN ALL CAPS)
+
+. * example syntax: 
+. * global SURVEY NHIS_2018
+. * or
+. * global SURVEY NHANES_2017_2018
+. 
+. clear all
+
+. 
+. **************
+. *NHIS VERSION*
+. **************
+. 
+. // DEFINE VALUE LABELS FOR REPORTS
+. label define eligfmt 1 &quot;Eligible&quot; 2 &quot;Under age 18, not available for public release&quot; 3 &quot;Ineligible&quot; 
+
+. label define mortfmt 0 &quot;Assumed alive&quot; 1 &quot;Assumed deceased&quot; .z &quot;Ineligible or under age 18&quot;
+
+. label define flagfmt 0 &quot;No - Condition not listed as a multiple cause of death&quot; 1 &quot;Yes - Condition listed as a multiple cause of death&quot; .z &quot;Assumed al
+&gt; ive, under age 18, ineligible for mortality follow-up, or MCOD not available&quot;
+
+. label define qtrfmt 1 &quot;January-March&quot; 2 &quot;April-June&quot; 3 &quot;July-September&quot; 4 &quot;October-December&quot; .z &quot;Ineligible, under age 18, or assumed alive&quot;
+
+. label define dodyfmt .z &quot;Ineligible, under age 18, or assumed alive&quot;
+
+. label define ucodfmt 1 &quot;Diseases of heart (I00-I09, I11, I13, I20-I51)&quot;                           
+
+. label define ucodfmt 2 &quot;Malignant neoplasms (C00-C97)&quot;                                            , add
+
+. label define ucodfmt 3 &quot;Chronic lower respiratory diseases (J40-J47)&quot;                             , add
+
+. label define ucodfmt 4 &quot;Accidents (unintentional injuries) (V01-X59, Y85-Y86)&quot;                    , add
+
+. label define ucodfmt 5 &quot;Cerebrovascular diseases (I60-I69)&quot;                                       , add
+
+. label define ucodfmt 6 &quot;Alzheimer's disease (G30)&quot;                                                , add
+
+. label define ucodfmt 7 &quot;Diabetes mellitus (E10-E14)&quot;                                              , add
+
+. label define ucodfmt 8 &quot;Influenza and pneumonia (J09-J18)&quot;                                        , add
+
+. label define ucodfmt 9 &quot;Nephritis, nephrotic syndrome and nephrosis (N00-N07, N17-N19, N25-N27)&quot;  , add
+
+. label define ucodfmt 10 &quot;All other causes (residual)&quot;                                             , add
+
+. label define ucodfmt .z &quot;Ineligible, under age 18, assumed alive, or no cause of death data&quot;      , add
+
+. 
+. // READ IN THE FIXED-WIDTH FORMAT ASCII PUBLIC-USE LMF
+. infix str publicid 1-14 eligstat 15 mortstat 16 ucod_leading 17-19 diabetes 20 hyperten 21 dodqtr 22 dodyear 23-26 wgt_new 27-34 sa_wgt_new 35-42 usin
+&gt; g ${SURVEY}_MORT_2019_PUBLIC.dat  
+(9,965 observations read)
+
+. 
+. 
+. // REPLACE MISSING VALUES TO .z FOR LABELING
+. replace mortstat = .z if mortstat &gt;=.
+(4,520 real changes made, 4,520 to missing)
+
+. replace ucod_leading = .z if ucod_leading &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace diabetes = .z if diabetes &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace hyperten = .z if hyperten &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace dodqtr = .z if dodqtr &gt;=.
+(9,965 real changes made, 9,965 to missing)
+
+. replace dodyear = .z if dodyear &gt;=.
+(9,965 real changes made, 9,965 to missing)
+
+. 
+. 
+. // DEFINE VARIABLE LABELS 
+. label var publicid &quot;NHIS Public-ID Number&quot;
+
+. label var eligstat &quot;Eligibility Status for Mortality Follow-up&quot;
+
+. label var mortstat &quot;Final Mortality Status&quot;
+
+. label var ucod_leading &quot;Underlying Cause of Death: Recode&quot;
+
+. label var diabetes &quot;Diabetes flag from Multiple Cause of Death&quot;
+
+. label var hyperten &quot;Hypertension flag from Multiple Cause of Death&quot;
+
+. label var dodqtr  &quot;Quarter of Death&quot;
+
+. label var dodyear &quot;Year of Death&quot;
+
+. label var wgt_new  &quot;Weight Adjusted for Ineligible Respondents: Person-level Sample Weight&quot;
+
+. label var sa_wgt_new  &quot;Weight Adjusted for Ineligible Respondents: Sample Adult Sample Weight&quot;
+
+. 
+. 
+. // ASSOCIATE VARIABLES WITH FORMAT VALUES 
+. label values eligstat eligfmt
+
+. label values mortstat mortfmt
+
+. label values ucod_leading ucodfmt
+
+. label values dodqtr     qtrfmt
+
+. label values diabetes flagfmt
+
+. label values hyperten flagfmt
+
+. label values dodyear dodyfmt
+
+. 
+. 
+. // DISPLAY OVERALL DESCRIPTION OF FILE 
+. describe
+
+Contains data
+ Observations:         9,965                  
+    Variables:            10                  
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+publicid        str14   %14s                  NHIS Public-ID Number
+eligstat        byte    %46.0g     eligfmt    Eligibility Status for Mortality Follow-up
+mortstat        byte    %26.0g     mortfmt    Final Mortality Status
+ucod_leading    float   %71.0g     ucodfmt    Underlying Cause of Death: Recode
+diabetes        byte    %86.0g     flagfmt    Diabetes flag from Multiple Cause of Death
+hyperten        byte    %86.0g     flagfmt    Hypertension flag from Multiple Cause of Death
+dodqtr          byte    %42.0g     qtrfmt     Quarter of Death
+dodyear         float   %42.0g     dodyfmt    Year of Death
+wgt_new         float   %9.0g                 Weight Adjusted for Ineligible Respondents: Person-level Sample Weight
+sa_wgt_new      float   %9.0g                 Weight Adjusted for Ineligible Respondents: Sample Adult Sample Weight
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. 
+. 
+. // ONE-WAY FREQUENCIES (UNWEIGHTED)
+. tab1 eligstat mortstat ucod_leading diabetes hyperten dodqtr dodyear, missing
+
+-&gt; tabulation of eligstat  
+
+       Eligibility Status for Mortality |
+                              Follow-up |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+                               Eligible |      5,445       54.64       54.64
+Under age 18, not available for public  |      4,517       45.33       99.97
+                             Ineligible |          3        0.03      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of mortstat  
+
+    Final Mortality Status |      Freq.     Percent        Cum.
+---------------------------+-----------------------------------
+             Assumed alive |      3,770       37.83       37.83
+          Assumed deceased |      1,675       16.81       54.64
+Ineligible or under age 18 |      4,520       45.36      100.00
+---------------------------+-----------------------------------
+                     Total |      9,965      100.00
+
+-&gt; tabulation of ucod_leading  
+
+      Underlying Cause of Death: Recode |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Diseases of heart (I00-I09, I11, I13, I |        468        4.70        4.70
+          Malignant neoplasms (C00-C97) |        348        3.49        8.19
+Chronic lower respiratory diseases (J40 |         94        0.94        9.13
+Accidents (unintentional injuries) (V01 |         59        0.59        9.72
+     Cerebrovascular diseases (I60-I69) |         95        0.95       10.68
+              Alzheimer's disease (G30) |         56        0.56       11.24
+            Diabetes mellitus (E10-E14) |         74        0.74       11.98
+      Influenza and pneumonia (J09-J18) |         45        0.45       12.43
+Nephritis, nephrotic syndrome and nephr |         36        0.36       12.79
+            All other causes (residual) |        399        4.00       16.80
+Ineligible, under age 18, assumed alive |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of diabetes  
+
+   Diabetes flag from Multiple Cause of |
+                                  Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+No - Condition not listed as a multiple |      1,451       14.56       14.56
+Yes - Condition listed as a multiple ca |        223        2.24       16.80
+Assumed alive, under age 18, ineligible |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of hyperten  
+
+  Hypertension flag from Multiple Cause |
+                               of Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+No - Condition not listed as a multiple |      1,395       14.00       14.00
+Yes - Condition listed as a multiple ca |        279        2.80       16.80
+Assumed alive, under age 18, ineligible |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of dodqtr  
+
+                       Quarter of Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Ineligible, under age 18, or assumed al |      9,965      100.00      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of dodyear  
+
+                          Year of Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Ineligible, under age 18, or assumed al |      9,965      100.00      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+. 
+.  
+. // SAVE DATA FILE IN DIRECTORY DESIGNATED AT TOP OF PROGRAM AS **SURVEY**_PUF.DTA
+. // replace option allows Stata to overwrite an existing .dta file
+. save ${SURVEY}_PUF , replace
+file NHANES_1999_2000_PUF.dta saved
+
+. 
+. 
+. ******************
+. 
+. 
+. ****************
+. *NHANES VERSION*
+. ****************
+. clear all
+
+. 
+. // DEFINE VALUE LABELS FOR REPORTS
+. label define premiss .z &quot;Missing&quot;
+
+. label define eligfmt 1 &quot;Eligible&quot; 2 &quot;Under age 18, not available for public release&quot; 3 &quot;Ineligible&quot; 
+
+. label define mortfmt 0 &quot;Assumed alive&quot; 1 &quot;Assumed deceased&quot; .z &quot;Ineligible or under age 18&quot;
+
+. label define flagfmt 0 &quot;No - Condition not listed as a multiple cause of death&quot; 1 &quot;Yes - Condition listed as a multiple cause of death&quot; .z &quot;Assumed al
+&gt; ive, under age 18, ineligible for mortality follow-up, or MCOD not available&quot;
+
+. label define qtrfmt 1 &quot;January-March&quot; 2 &quot;April-June&quot; 3 &quot;July-September&quot; 4 &quot;October-December&quot; .z &quot;Ineligible, under age 18, or assumed alive&quot;
+
+. label define dodyfmt .z &quot;Ineligible, under age 18, or assumed alive&quot;
+
+. label define ucodfmt 1 &quot;Diseases of heart (I00-I09, I11, I13, I20-I51)&quot;                           
+
+. label define ucodfmt 2 &quot;Malignant neoplasms (C00-C97)&quot;                                            , add
+
+. label define ucodfmt 3 &quot;Chronic lower respiratory diseases (J40-J47)&quot;                             , add
+
+. label define ucodfmt 4 &quot;Accidents (unintentional injuries) (V01-X59, Y85-Y86)&quot;                    , add
+
+. label define ucodfmt 5 &quot;Cerebrovascular diseases (I60-I69)&quot;                                       , add
+
+. label define ucodfmt 6 &quot;Alzheimer's disease (G30)&quot;                                                , add
+
+. label define ucodfmt 7 &quot;Diabetes mellitus (E10-E14)&quot;                                              , add
+
+. label define ucodfmt 8 &quot;Influenza and pneumonia (J09-J18)&quot;                                        , add
+
+. label define ucodfmt 9 &quot;Nephritis, nephrotic syndrome and nephrosis (N00-N07, N17-N19, N25-N27)&quot;  , add
+
+. label define ucodfmt 10 &quot;All other causes (residual)&quot;                                             , add
+
+. label define ucodfmt .z &quot;Ineligible, under age 18, assumed alive, or no cause of death data&quot;      , add
+
+. 
+. // READ IN THE FIXED-WIDTH FORMAT ASCII PUBLIC-USE LMF
+. infix seqn 1-6 eligstat 15 mortstat 16 ucod_leading 17-19 diabetes 20 hyperten 21 permth_int 43-45 permth_exm 46-48 using ${SURVEY}_MORT_2019_PUBLIC.d
+&gt; at        
+(9,965 observations read)
+
+. 
+. 
+. // REPLACE MISSING VALUES TO .z FOR LABELING
+. replace mortstat = .z if mortstat &gt;=.
+(4,520 real changes made, 4,520 to missing)
+
+. replace ucod_leading = .z if ucod_leading &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace diabetes = .z if diabetes &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace hyperten = .z if hyperten &gt;=.
+(8,291 real changes made, 8,291 to missing)
+
+. replace permth_int = .z if permth_int &gt;=.
+(4,520 real changes made, 4,520 to missing)
+
+. replace permth_exm = .z if permth_exm &gt;=.
+(4,992 real changes made, 4,992 to missing)
+
+. 
+. 
+. // DEFINE VARIABLE LABELS 
+. label var seqn &quot;NHANES Respondent Sequence Number&quot;
+
+. label var eligstat &quot;Eligibility Status for Mortality Follow-up&quot;
+
+. label var mortstat &quot;Final Mortality Status&quot;
+
+. label var ucod_leading &quot;Underlying Cause of Death: Recode&quot;
+
+. label var diabetes &quot;Diabetes flag from Multiple Cause of Death&quot;
+
+. label var hyperten &quot;Hypertension flag from Multiple Cause of Death&quot;
+
+. label var permth_int &quot;Person-Months of Follow-up from NHANES Interview date&quot;
+
+. label var permth_exm &quot;Person-Months of Follow-up from NHANES Mobile Examination Center (MEC) Date&quot;
+
+. 
+. 
+. // ASSOCIATE VARIABLES WITH FORMAT VALUES 
+. label values eligstat eligfmt
+
+. label values mortstat mortfmt
+
+. label values ucod_leading ucodfmt
+
+. label values diabetes flagfmt
+
+. label values hyperten flagfmt
+
+. label value permth_int premiss
+
+. label value permth_exm premiss
+
+. 
+. 
+. // DISPLAY OVERALL DESCRIPTION OF FILE 
+. describe
+
+Contains data
+ Observations:         9,965                  
+    Variables:             8                  
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+seqn            float   %9.0g                 NHANES Respondent Sequence Number
+eligstat        byte    %46.0g     eligfmt    Eligibility Status for Mortality Follow-up
+mortstat        byte    %26.0g     mortfmt    Final Mortality Status
+ucod_leading    float   %71.0g     ucodfmt    Underlying Cause of Death: Recode
+diabetes        byte    %86.0g     flagfmt    Diabetes flag from Multiple Cause of Death
+hyperten        byte    %86.0g     flagfmt    Hypertension flag from Multiple Cause of Death
+permth_int      float   %9.0g      premiss    Person-Months of Follow-up from NHANES Interview date
+permth_exm      float   %9.0g      premiss    Person-Months of Follow-up from NHANES Mobile Examination Center (MEC) Date
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. 
+. 
+. // ONE-WAY FREQUENCIES (UNWEIGHTED)
+. tab1 eligstat mortstat ucod_leading diabetes hyperten, missing
+
+-&gt; tabulation of eligstat  
+
+       Eligibility Status for Mortality |
+                              Follow-up |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+                               Eligible |      5,445       54.64       54.64
+Under age 18, not available for public  |      4,517       45.33       99.97
+                             Ineligible |          3        0.03      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of mortstat  
+
+    Final Mortality Status |      Freq.     Percent        Cum.
+---------------------------+-----------------------------------
+             Assumed alive |      3,770       37.83       37.83
+          Assumed deceased |      1,675       16.81       54.64
+Ineligible or under age 18 |      4,520       45.36      100.00
+---------------------------+-----------------------------------
+                     Total |      9,965      100.00
+
+-&gt; tabulation of ucod_leading  
+
+      Underlying Cause of Death: Recode |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+Diseases of heart (I00-I09, I11, I13, I |        468        4.70        4.70
+          Malignant neoplasms (C00-C97) |        348        3.49        8.19
+Chronic lower respiratory diseases (J40 |         94        0.94        9.13
+Accidents (unintentional injuries) (V01 |         59        0.59        9.72
+     Cerebrovascular diseases (I60-I69) |         95        0.95       10.68
+              Alzheimer's disease (G30) |         56        0.56       11.24
+            Diabetes mellitus (E10-E14) |         74        0.74       11.98
+      Influenza and pneumonia (J09-J18) |         45        0.45       12.43
+Nephritis, nephrotic syndrome and nephr |         36        0.36       12.79
+            All other causes (residual) |        399        4.00       16.80
+Ineligible, under age 18, assumed alive |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of diabetes  
+
+   Diabetes flag from Multiple Cause of |
+                                  Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+No - Condition not listed as a multiple |      1,451       14.56       14.56
+Yes - Condition listed as a multiple ca |        223        2.24       16.80
+Assumed alive, under age 18, ineligible |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+-&gt; tabulation of hyperten  
+
+  Hypertension flag from Multiple Cause |
+                               of Death |      Freq.     Percent        Cum.
+----------------------------------------+-----------------------------------
+No - Condition not listed as a multiple |      1,395       14.00       14.00
+Yes - Condition listed as a multiple ca |        279        2.80       16.80
+Assumed alive, under age 18, ineligible |      8,291       83.20      100.00
+----------------------------------------+-----------------------------------
+                                  Total |      9,965      100.00
+
+. tab permth_int if permth_int==.z, missing
+
+Person-Mont |
+      hs of |
+  Follow-up |
+from NHANES |
+  Interview |
+       date |      Freq.     Percent        Cum.
+------------+-----------------------------------
+    Missing |      4,520      100.00      100.00
+------------+-----------------------------------
+      Total |      4,520      100.00
+
+. tab permth_exm if permth_exm==.z, missing
+
+Person-Mont |
+      hs of |
+  Follow-up |
+from NHANES |
+     Mobile |
+Examination |
+     Center |
+ (MEC) Date |      Freq.     Percent        Cum.
+------------+-----------------------------------
+    Missing |      4,992      100.00      100.00
+------------+-----------------------------------
+      Total |      4,992      100.00
+
+. 
+. // SAVE DATA FILE IN DIRECTORY DESIGNATED AT TOP OF PROGRAM AS **SURVEY**_PUF.DTA
+. // replace option allows Stata to overwrite an existing .dta file
+. save ${SURVEY}_PUF, replace
+file NHANES_1999_2000_PUF.dta saved
+
+. 
+. 
+end of do-file
+
+. save followup, replace 
+(file followup.dta not found)
+file followup.dta saved
+
+. import sasxport5 &quot;${nhanes}1999-2000/DEMO.XPT&quot;, clear
+
+. merge 1:1 seqn using followup, nogen
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                             9,965  
+    -----------------------------------------
+
+. save survey_followup, replace 
+(file survey_followup.dta not found)
+file survey_followup.dta saved
+
+. 
+. //3. parameters
+. import sasxport5 &quot;${nhanes}1999-2000/HUQ.XPT&quot;, clear
+
+. tab huq010 
+
+    General |
+     health |
+  condition |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      3,002       30.14       30.14
+          2 |      2,464       24.74       54.88
+          3 |      2,867       28.79       83.66
+          4 |      1,306       13.11       96.78
+          5 |        316        3.17       99.95
+          9 |          5        0.05      100.00
+------------+-----------------------------------
+      Total |      9,960      100.00
+
+. merge 1:1 seqn using survey_followup, nogen keep(matched)
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                             9,965  
+    -----------------------------------------
+
+. rm followup.dta
+
+. rm survey_followup.dta
+
+. g years=permth_int/12
+(4,520 missing values generated)
+
+. stset years, fail(mortstat)
+
+Survival-time data settings
+
+         Failure event: mortstat!=0 &amp; mortstat&lt;.
+Observed time interval: (0, years]
+     Exit on or before: failure
+
+--------------------------------------------------------------------------
+      9,965  total observations
+      4,520  event time missing (years&gt;=.)                  PROBABLE ERROR
+          2  observations end on or before enter()
+--------------------------------------------------------------------------
+      5,443  observations remaining, representing
+      1,673  failures in single-record/single-failure data
+  91,800.25  total analysis time at risk and under observation
+                                                At risk from t =         0
+                                     Earliest observed entry t =         0
+                                          Last observed exit t =  20.83333
+
+. replace huq010=. if huq010==9
+(5 real changes made, 5 to missing)
+
+. label define huq 1 &quot;Excellent&quot; 2 &quot;Very Good&quot; 3 &quot;Good&quot; 4 &quot;Fair&quot; 5 &quot;Poor&quot;
+
+. label values huq010 huq 
+
+. levelsof huq010, local(numlevels)
+1 2 3 4 5
+
+. local i=1
+
+. foreach l of numlist `numlevels' {
+  2.     local vallab: value label huq010 
+  3.         local catlab: lab `vallab' `l'
+  4.         global legend`i' = &quot;`catlab'&quot;
+  5.         local i= `i' + 1
+  6. }
+
+. save week7, replace 
+file week7.dta saved
+
+. sts graph, ///
+&gt;     by(huq010) ///
+&gt;         fail ///
+&gt;         per(100) ///
+&gt;         ylab(0(20)80 , ///
+&gt;             format(%2.0f) ///
+&gt;         ) ///
+&gt;         xlab(0(5)20) ///
+&gt;         tmax(20) ///
+&gt;         ti(&quot;Self-Reported Health and Mortality&quot;) ///
+&gt;         legend( ///
+&gt;             order(5 4 3 2 1) ///
+&gt;                 lab(1 &quot;$legend1&quot;) ///
+&gt;                 lab(2 &quot;$legend2&quot;) ///
+&gt;                 lab(3 &quot;$legend3&quot;) ///
+&gt;                 lab(4 &quot;$legend4&quot;) ///
+&gt;                 lab(5 &quot;$legend5&quot;) ///
+&gt;                 ring(0) pos(11) ///
+&gt;         )
+
+        Failure _d: mortstat
+  Analysis time _t: years
+
+. graph export nonpara.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/nonpara.png saved as PNG format
+
+</code></pre>
+<p><img src="Graph5.svg" ></p>
+<p><strong>semi-parametric:</strong></p>
+<pre><code>. // semi-parametric
+. /* -- earlier code --*/
+. stcox i.huq010, basesurv(s0)
+
+        Failure _d: mortstat
+  Analysis time _t: years
+
+Iteration 0:   log likelihood = -14053.711
+Iteration 1:   log likelihood = -13842.257
+Iteration 2:   log likelihood = -13815.469
+Iteration 3:   log likelihood = -13815.219
+Iteration 4:   log likelihood = -13815.219
+Refining estimates:
+Iteration 0:   log likelihood = -13815.219
+
+Cox regression with Breslow method for ties
+
+No. of subjects =       5,436                           Number of obs =  5,436
+No. of failures =       1,671
+Time at risk    = 91,679.7499
+                                                        LR chi2(4)    = 476.98
+Log likelihood = -13815.219                             Prob &gt; chi2   = 0.0000
+
+------------------------------------------------------------------------------
+          _t | Haz. ratio   Std. err.      z    P&gt;|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      huq010 |
+  Very Good  |   1.347475   .1251746     3.21   0.001     1.123176    1.616567
+       Good  |   1.880346   .1619641     7.33   0.000     1.588251    2.226159
+       Fair  |   2.985347   .2634849    12.39   0.000     2.511125    3.549126
+       Poor  |   7.475088   .7565146    19.88   0.000     6.130144    9.115111
+------------------------------------------------------------------------------
+
+. matrix define mat = r(table)
+
+. matrix list mat 
+
+mat[9,5]
+               1b.         2.         3.         4.         5.
+           huq010     huq010     huq010     huq010     huq010
+     b          1  1.3474753  1.8803457  2.9853475  7.4750881
+    se          .  .12517462  .16196412  .26348489  .75651458
+     z          .  3.2104048  7.3309743  12.392068  19.876295
+pvalue          .  .00132548  2.285e-13  2.885e-35  6.528e-88
+    ll          .  1.1231762  1.5882512  2.5111252  6.1301437
+    ul          .  1.6165672   2.226159  3.5491258  9.1151112
+    df          .          .          .          .          .
+  crit   1.959964   1.959964   1.959964   1.959964   1.959964
+ eform          1          1          1          1          1
+
+. matrix mat = mat'
+
+. svmat mat
+
+. preserve 
+
+. keep mat*
+
+. drop if missing(mat1)
+(9,960 observations deleted)
+
+. rename (mat1 mat2 mat3 mat4 mat5 mat6 mat7 mat8 mat9)(b se z p ll ul df crit eform)
+
+. g x=_n
+
+. replace b=log(b)
+(5 real changes made)
+
+. replace ll=log(ll)
+(4 real changes made)
+
+. replace ul=log(ul)
+(4 real changes made)
+
+. twoway (scatter b x) || ///
+&gt;        (rcap ll ul x, ///
+&gt;                yline(0, lcol(lime)) ///
+&gt;                    ylab( ///
+&gt;                        -2.08 &quot;0.125&quot; ///
+&gt;                            -1.39 &quot;0.25&quot; ///
+&gt;                            -.69 &quot;0.5&quot; ///
+&gt;                              0 &quot;1&quot;  ///
+&gt;                            .69 &quot;2&quot; ///
+&gt;                            1.39 &quot;4&quot; ///
+&gt;                            2.08 &quot;8&quot; ///
+&gt;                            2.78 &quot;16&quot;) ///
+&gt;                    legend(off)  ///
+&gt;                 xlab( ///
+&gt;            1 &quot;$legend1&quot; ///
+&gt;                    2 &quot;$legend2&quot; ///
+&gt;                    3 &quot;$legend3&quot; ///
+&gt;                    4 &quot;$legend4&quot; ///
+&gt;                    5 &quot;$legend5&quot;) ///
+&gt;            xti(&quot;Self-Reported Health&quot;) ///
+&gt;                    ) 
+
+. graph export semipara_unadj.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/semipara_unadj.png saved as PNG format
+
+. graph save semipara_unadj.gph, replace 
+file semipara_unadj.gph saved
+
+. restore 
+
+</code></pre>
+<p><img src="Graph6.svg" ></p>
+<p><strong>semi-parametric, cox regresson adjusted for age and gender:</strong></p>
+<pre><code>. // adjusted for age and gender
+. hist ridageyr 
+(bin=39, start=0, width=2.1794872)
+
+. graph export nonpara.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/nonpara.png saved as PNG format
+
+. capture drop s0 
+
+. stcox i.huq010 ridageyr riagendr, basesurv(s0)
+
+        Failure _d: mortstat
+  Analysis time _t: years
+
+Iteration 0:   log likelihood = -14053.711
+Iteration 1:   log likelihood = -12507.535
+Iteration 2:   log likelihood = -12336.034
+Iteration 3:   log likelihood = -12330.399
+Iteration 4:   log likelihood = -12330.368
+Iteration 5:   log likelihood = -12330.368
+Refining estimates:
+Iteration 0:   log likelihood = -12330.368
+
+Cox regression with Breslow method for ties
+
+No. of subjects =       5,436                          Number of obs =   5,436
+No. of failures =       1,671
+Time at risk    = 91,679.7499
+                                                       LR chi2(6)    = 3446.69
+Log likelihood = -12330.368                            Prob &gt; chi2   =  0.0000
+
+------------------------------------------------------------------------------
+          _t | Haz. ratio   Std. err.      z    P&gt;|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      huq010 |
+  Very Good  |    1.14715   .1066937     1.48   0.140     .9559872    1.376539
+       Good  |   1.522007   .1313003     4.87   0.000     1.285243    1.802387
+       Fair  |   1.777098    .157479     6.49   0.000     1.493762    2.114177
+       Poor  |   3.169804   .3213622    11.38   0.000     2.598577      3.8666
+             |
+    ridageyr |   1.089492   .0020788    44.92   0.000     1.085425    1.093574
+    riagendr |   .7039323   .0347043    -7.12   0.000     .6390961    .7753461
+------------------------------------------------------------------------------
+
+. return list
+
+scalars:
+              r(level) =  95
+
+matrices:
+              r(table) :  9 x 7
+
+. matrix define mat_adj=r(table)
+
+. matrix define mat_adj=mat_adj'
+
+. matrix list mat_adj
+
+mat_adj[7,9]
+                    b          se           z      pvalue          ll          ul          df        crit       eform
+1b.huq010           1           .           .           .           .           .           .    1.959964           1
+ 2.huq010   1.1471502   .10669366   1.4760168   .13993937    .9559872   1.3765388           .    1.959964           1
+ 3.huq010   1.5220069   .13130029    4.868902   1.122e-06   1.2852431   1.8023867           .    1.959964           1
+ 4.huq010   1.7770978   .15747898   6.4884757   8.671e-11    1.493762   2.1141766           .    1.959964           1
+ 5.huq010   3.1698039   .32136218   11.379393   5.297e-30   2.5985769   3.8665996           .    1.959964           1
+ ridageyr   1.0894921   .00207879   44.921463           0   1.0854254   1.0935741           .    1.959964           1
+ riagendr   .70393228   .03470427  -7.1210742   1.071e-12   .63909607   .77534611           .    1.959964           1
+
+. svmat mat_adj
+
+. preserve 
+
+. keep mat_adj*
+
+. drop if missing(mat_adj1)
+(9,958 observations deleted)
+
+. rename (mat_adj1 mat_adj2 mat_adj3 mat_adj4 mat_adj5 mat_adj6 mat_adj7 mat_adj8 mat_adj9)(b se z p ll ul df crit eform)
+
+. g x=_n
+
+. replace b=log(b)
+(7 real changes made)
+
+. replace ll=log(ll)
+(6 real changes made)
+
+. replace ul=log(ul)
+(6 real changes made)
+
+. twoway (scatter b x if inrange(x,1,5)) || ///
+&gt;        (rcap ll ul x if inrange(x,1,5), ///
+&gt;                yline(0, lcol(lime)) ///
+&gt;                    ylab( ///
+&gt;                        -2.08 &quot;0.125&quot; ///
+&gt;                            -1.39 &quot;0.25&quot; ///
+&gt;                            -.69 &quot;0.5&quot; ///
+&gt;                              0 &quot;1&quot;  ///
+&gt;                            .69 &quot;2&quot; ///
+&gt;                            1.39 &quot;4&quot; ///
+&gt;                            2.08 &quot;8&quot; ///
+&gt;                            2.78 &quot;16&quot;) ///
+&gt;                    legend(off)  ///
+&gt;                 xlab( ///
+&gt;            1 &quot;$legend1&quot; ///
+&gt;                    2 &quot;$legend2&quot; ///
+&gt;                    3 &quot;$legend3&quot; ///
+&gt;                    4 &quot;$legend4&quot; ///
+&gt;                    5 &quot;$legend5&quot;) ///
+&gt;            xti(&quot;Self-Reported Health&quot;) ///
+&gt;                    ) 
+
+. graph export semipara_adj.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/semipara_adj.png saved as PNG format
+
+. graph save semipara_adj.gph, replace 
+file semipara_adj.gph saved
+
+. restore
+
+</code></pre>
+<p><img src="Graph7.svg" ></p>
+<p><strong>semi-parametric, cox regresson adjusted for age, gender, race, marital status and family annual income:</strong></p>
+<pre><code>. // adjusted for age,race gender, and additionally adjusted for marital status and family annual income
+. capture drop s0 
+
+. stcox i.huq010 ridageyr riagendr ridreth1 dmdmartl indhhinc, basesurv(s0)
+
+        Failure _d: mortstat
+  Analysis time _t: years
+
+Iteration 0:   log likelihood =  -9994.016
+Iteration 1:   log likelihood = -9041.4604
+Iteration 2:   log likelihood = -8718.7518
+Iteration 3:   log likelihood = -8676.5345
+Iteration 4:   log likelihood = -8664.2962
+Iteration 5:   log likelihood = -8661.2855
+Iteration 6:   log likelihood = -8660.8946
+Iteration 7:   log likelihood =  -8660.883
+Iteration 8:   log likelihood = -8660.8829
+Refining estimates:
+Iteration 0:   log likelihood = -8660.8829
+
+Cox regression with Breslow method for ties
+
+No. of subjects =       4,089                          Number of obs =   4,089
+No. of failures =       1,229
+Time at risk    = 69,395.9999
+                                                       LR chi2(9)    = 2666.27
+Log likelihood = -8660.8829                            Prob &gt; chi2   =  0.0000
+
+------------------------------------------------------------------------------
+          _t | Haz. ratio   Std. err.      z    P&gt;|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      huq010 |
+  Very Good  |   1.157297   .1269711     1.33   0.183     .9333756    1.434938
+       Good  |   1.627146   .1651912     4.80   0.000     1.333555    1.985374
+       Fair  |   1.975616   .2078671     6.47   0.000     1.607468    2.428079
+       Poor  |   3.494822   .4217976    10.37   0.000     2.758618    4.427498
+             |
+    ridageyr |   1.091835   .0024653    38.91   0.000     1.087014    1.096678
+    riagendr |   .7386431   .0426269    -5.25   0.000     .6596477    .8270985
+    ridreth1 |   1.129332   .0295831     4.64   0.000     1.072813    1.188828
+    dmdmartl |    1.01916   .0062253     3.11   0.002     1.007031    1.031435
+    indhhinc |   1.001844   .0037978     0.49   0.627     .9944279    1.009315
+------------------------------------------------------------------------------
+
+. return list
+
+scalars:
+              r(level) =  95
+
+matrices:
+              r(table) :  9 x 10
+
+. matrix define mat_adja=r(table)
+
+. matrix define mat_adja=mat_adja'
+
+. matrix list mat_adja
+
+mat_adja[10,9]
+                    b          se           z      pvalue          ll          ul          df        crit       eform
+1b.huq010           1           .           .           .           .           .           .    1.959964           1
+ 2.huq010   1.1572968   .12697106   1.3315313   .18301426   .93337564   1.4349377           .    1.959964           1
+ 3.huq010   1.6271464   .16519116   4.7952937   1.624e-06    1.333555   1.9853739           .    1.959964           1
+ 4.huq010   1.9756164   .20786706   6.4712444   9.720e-11    1.607468   2.4280795           .    1.959964           1
+ 5.huq010   3.4948216   .42179763   10.367551   3.483e-25   2.7586185   4.4274981           .    1.959964           1
+ ridageyr   1.0918353   .00246525   38.912288           0   1.0870142   1.0966778           .    1.959964           1
+ riagendr   .73864307   .04262687  -5.2493857   1.526e-07   .65964768   .82709846           .    1.959964           1
+ ridreth1   1.1293319   .02958308   4.6430736   3.433e-06   1.0728135    1.188828           .    1.959964           1
+ dmdmartl   1.0191598   .00622532   3.1070182   .00188985   1.0070311   1.0314345           .    1.959964           1
+ indhhinc    1.001844   .00379783   .48597717   .62698335   .99442794   1.0093153           .    1.959964           1
+
+. svmat mat_adja
+
+. preserve 
+
+. keep mat_adja*
+
+. drop if missing(mat_adja1)
+(9,955 observations deleted)
+
+. rename (mat_adja1 mat_adja2 mat_adja3 mat_adja4 mat_adja5 mat_adja6 mat_adja7 mat_adja8 mat_adja9)(b se z p ll ul df crit eform)
+
+. g x=_n
+
+. replace b=log(b)
+(10 real changes made)
+
+. replace ll=log(ll)
+(9 real changes made)
+
+. replace ul=log(ul)
+(9 real changes made)
+
+. twoway (scatter b x if inrange(x,1,5)) || ///
+&gt;        (rcap ll ul x if inrange(x,1,5), ///
+&gt;                yline(0, lcol(lime)) ///
+&gt;                    ylab( ///
+&gt;                        -2.08 &quot;0.125&quot; ///
+&gt;                            -1.39 &quot;0.25&quot; ///
+&gt;                            -.69 &quot;0.5&quot; ///
+&gt;                              0 &quot;1&quot;  ///
+&gt;                            .69 &quot;2&quot; ///
+&gt;                            1.39 &quot;4&quot; ///
+&gt;                            2.08 &quot;8&quot; ///
+&gt;                            2.78 &quot;16&quot;) ///
+&gt;                    legend(off)  ///
+&gt;                 xlab( ///
+&gt;            1 &quot;$legend1&quot; ///
+&gt;                    2 &quot;$legend2&quot; ///
+&gt;                    3 &quot;$legend3&quot; ///
+&gt;                    4 &quot;$legend4&quot; ///
+&gt;                    5 &quot;$legend5&quot;) ///
+&gt;            xti(&quot;Self-Reported Health&quot;) ///
+&gt;                    ) 
+
+. graph export semipara_adj2.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/semipara_adj2.png saved as PNG format
+
+. graph save semipara_adj2.gph, replace 
+file semipara_adj2.gph saved
+
+. restore
+
+</code></pre>
+<p><img src="Graph8.svg" ></p>
+<p><strong>compare the unadjusted and the two adjusted graphs</strong></p>
+<pre><code>. // compare the graphs
+. graph combine semipara_unadj.gph semipara_adj.gph semipara_adj2.gph, ///
+&gt;      rows(1) ///
+&gt;   xcommon ti(&quot;Figure:Unadjusted vs adjusted Hazard Ratio (95%CI)&quot;)
+
+. graph export comparison.png, replace 
+file /Users/wenjiecai/Documents/term4/stata_intermediate/hw7/comparison.png saved as PNG format
+
+. graph save comparison.gph, replace 
+file comparison.gph saved
+
+</code></pre>
+<p><img src="Graph9.svg" ></p>
