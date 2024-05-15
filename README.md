@@ -158,7 +158,7 @@ sts graph, ///
 graph export nonpara.png, replace
 ```
 
-### Semi-parametric Model
+### Unadjusted Semi-parametric Model
 
 Click [here](semipara_unadj.png).
 ```stata
@@ -200,4 +200,50 @@ twoway (scatter b x) || ///
 graph export semipara_unadj.png, replace 
 graph save semipara_unadj.gph, replace 
 restore
+```
+
+### Adjusted for Age and Other Demographics Semi-parametric Model
+
+Click [here](semipara_adj.png).
+```stata
+hist ridageyr 
+graph export nonpara.png, replace 
+//replace ridageyr=ridageyr/10
+capture drop s0 
+stcox i.huq010 ridageyr riagendr, basesurv(s0)
+return list
+matrix define mat_adj=r(table)
+matrix define mat_adj=mat_adj'
+matrix list mat_adj
+svmat mat_adj
+keep mat_adj*
+drop if missing(mat_adj1)
+rename (mat_adj1 mat_adj2 mat_adj3 mat_adj4 mat_adj5 mat_adj6 mat_adj7 mat_adj8 mat_adj9)(b se z p ll ul df crit eform)
+g x=_n
+replace b=log(b)
+replace ll=log(ll)
+replace ul=log(ul)
+twoway (scatter b x if inrange(x,1,5)) || ///
+       (rcap ll ul x if inrange(x,1,5), ///
+	       yline(0, lcol(lime)) ///
+		   ylab( ///
+		       -2.08 "0.125" ///
+			   -1.39 "0.25" ///
+			   -.69 "0.5" ///
+			     0 "1"  ///
+			   .69 "2" ///
+			   1.39 "4" ///
+			   2.08 "8" ///
+			   2.78 "16") ///
+		   legend(off)  ///
+		xlab( ///
+           1 "$legend1" ///
+		   2 "$legend2" ///
+		   3 "$legend3" ///
+		   4 "$legend4" ///
+		   5 "$legend5") ///
+	   xti("Self-Reported Health") ///
+	   	   ) 
+graph export semipara_adj.png, replace 
+graph save semipara_adj.gph, replace
 ```
